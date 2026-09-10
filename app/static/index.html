@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API de Cotação do Dólar em Tempo Real | USD → BRL, PYG, ARS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: rgba(18, 26, 44, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(30, 41, 69, 0.8);
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --accent: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.35);
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.15), transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.12), transparent 45%);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px 80px 24px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #2563eb, #10b981);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 8px 24px var(--primary-glow);
+    }
+
+    .brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      box-shadow: 0 4px 16px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--card-border);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Live status badge */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 12px #10b981;
+      animation: pulseAnim 1.8s infinite;
+    }
+
+    @keyframes pulseAnim {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .update-time {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .currency-flag {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flag-icon {
+      font-size: 26px;
+    }
+
+    .currency-info h3 {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .currency-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .variation-tag {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .var-positive {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .var-negative {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .rate-main {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .rate-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .detail-val {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Converter Section */
+    .converter-card {
+      background: linear-gradient(145deg, rgba(24, 34, 58, 0.9), rgba(15, 23, 42, 0.9));
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .converter-header {
+      margin-bottom: 24px;
+    }
+
+    .converter-header h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .converter-header p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .converter-inputs {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .input-group {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .input-control {
+      width: 100%;
+      background: rgba(10, 15, 26, 0.8);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .input-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .converter-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .conv-box {
+      background: rgba(10, 15, 26, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .conv-box-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .conv-box-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: #38bdf8;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .conv-box-rate {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Integration Guide Section */
+    .integrations-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px;
+    }
+
+    .tabs-header {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      color: #38bdf8;
+      border-bottom-color: #38bdf8;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .code-block {
+      background: #060911;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #e2e8f0;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+    }
+
+    .doc-step {
+      margin-bottom: 20px;
+    }
+
+    .doc-step h4 {
+      font-size: 15px;
+      margin-bottom: 6px;
+      color: #f1f5f9;
+    }
+
+    .doc-step p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-icon">💱</div>
+        <div>
+          <h1>API de Cotação de Moedas</h1>
+          <p>Dólar em Tempo Real → Real (BRL), Guarani (PYG), Peso Argentino (ARS)</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="/docs" target="_blank" class="btn btn-primary">📖 Swagger Docs</a>
+        <a href="/redoc" target="_blank" class="btn btn-outline">📑 ReDoc</a>
+        <a href="/api/cotacoes" target="_blank" class="btn btn-outline">⚡ JSON /cotacoes</a>
+      </div>
+    </header>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="badge-live">
+        <span class="pulse"></span> Cotações ao Vivo (CORS Ativo para Todos os Domínios)
+      </div>
+      <div class="update-time" id="last-updated-text">
+        Carregando cotações em tempo real...
+      </div>
+    </div>
+
+    <!-- Cards Grid -->
+    <div class="cards-grid">
+      <!-- BRL -->
+      <div class="card" id="card-BRL">
+        <div class="card-header">
+          <div class="currency-flag">
+            <span class="flag-icon">🇧🇷</span>
+            <div class="currency-info">
+              <h3>USD / BRL</h3>
+              <p>Real Brasileiro</p>
+            </div>
+          </div>
+          <span class="variation-tag var-positive" id="var-BRL">...</span>
+        </div>
+        <div class="rate-main" id="rate-BRL">R$ --,--</div>
+        <div class="rate-details">
+          <div class="detail-item">
+            <span class="detail-label">Compra (Bid)</span>
+            <span class="detail-val" id="bid-BRL">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Venda (Ask)</span>
+            <span class="detail-val" id="ask-BRL">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Máxima</span>
+            <span class="detail-val" id="high-BRL">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Mínima</span>
+            <span class="detail-val" id="low-BRL">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PYG -->
+      <div class="card" id="card-PYG">
+        <div class="card-header">
+          <div class="currency-flag">
+            <span class="flag-icon">🇵🇾</span>
+            <div class="currency-info">
+              <h3>USD / PYG</h3>
+              <p>Guarani Paraguaio</p>
+            </div>
+          </div>
+          <span class="variation-tag var-positive" id="var-PYG">...</span>
+        </div>
+        <div class="rate-main" id="rate-PYG">₲ --</div>
+        <div class="rate-details">
+          <div class="detail-item">
+            <span class="detail-label">Compra (Bid)</span>
+            <span class="detail-val" id="bid-PYG">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Venda (Ask)</span>
+            <span class="detail-val" id="ask-PYG">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Máxima</span>
+            <span class="detail-val" id="high-PYG">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Mínima</span>
+            <span class="detail-val" id="low-PYG">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ARS -->
+      <div class="card" id="card-ARS">
+        <div class="card-header">
+          <div class="currency-flag">
+            <span class="flag-icon">🇦🇷</span>
+            <div class="currency-info">
+              <h3>USD / ARS</h3>
+              <p>Peso Argentino</p>
+            </div>
+          </div>
+          <span class="variation-tag var-positive" id="var-ARS">...</span>
+        </div>
+        <div class="rate-main" id="rate-ARS">$ --,--</div>
+        <div class="rate-details">
+          <div class="detail-item">
+            <span class="detail-label">Compra (Bid)</span>
+            <span class="detail-val" id="bid-ARS">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Venda (Ask)</span>
+            <span class="detail-val" id="ask-ARS">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Máxima</span>
+            <span class="detail-val" id="high-ARS">--</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Mínima</span>
+            <span class="detail-val" id="low-ARS">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Converter -->
+    <div class="converter-card">
+      <div class="converter-header">
+        <h2>Simulador de Conversão Instantânea</h2>
+        <p>Digite qualquer valor em Dólar e veja o resultado correspondente nas 3 moedas simultaneamente.</p>
+      </div>
+      <div class="converter-inputs">
+        <div class="input-group">
+          <label class="input-label" for="amount-input">Valor em Dólar (USD $)</label>
+          <input type="number" id="amount-input" class="input-control" value="100" min="0" step="0.5">
+        </div>
+      </div>
+      <div class="converter-results-grid">
+        <div class="conv-box">
+          <div class="conv-box-title">🇧🇷 Real Brasileiro (BRL)</div>
+          <div class="conv-box-val" id="conv-BRL">R$ 0,00</div>
+          <div class="conv-box-rate" id="conv-rate-BRL">Taxa: --</div>
+        </div>
+        <div class="conv-box">
+          <div class="conv-box-title">🇵🇾 Guarani Paraguaio (PYG)</div>
+          <div class="conv-box-val" id="conv-PYG">₲ 0</div>
+          <div class="conv-box-rate" id="conv-rate-PYG">Taxa: --</div>
+        </div>
+        <div class="conv-box">
+          <div class="conv-box-title">🇦🇷 Peso Argentino (ARS)</div>
+          <div class="conv-box-val" id="conv-ARS">$ 0,00</div>
+          <div class="conv-box-rate" id="conv-rate-ARS">Taxa: --</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Integrations Section for Shopify & WordPress -->
+    <div class="integrations-card">
+      <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 8px;">Como Integrar em Seus Sites (Shopify / WordPress)</h2>
+      <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 24px;">
+        Esta API possui <strong>CORS totalmente habilitado</strong>. Você pode fazer requisições diretamente do navegador dos seus clientes sem bloqueios ou criar chamadas no backend.
+      </p>
+
+      <div class="tabs-header">
+        <button class="tab-btn active" onclick="showTab('shopify')">🛍️ Shopify</button>
+        <button class="tab-btn" onclick="showTab('wordpress')">📝 WordPress / WooCommerce</button>
+        <button class="tab-btn" onclick="showTab('widget')">🔌 Widget Automático (1 Linha)</button>
+        <button class="tab-btn" onclick="showTab('fetch')">💻 JavaScript / Fetch</button>
+      </div>
+
+      <!-- Tab Shopify -->
+      <div id="tab-shopify" class="tab-content active">
+        <div class="doc-step">
+          <h4>1. Inserir script no tema da Shopify (`theme.liquid`)</h4>
+          <p>Acesse seu painel Shopify → <strong>Loja Virtual</strong> → <strong>Temas</strong> → <strong>Editar código</strong> → abra o arquivo <code>layout/theme.liquid</code> e cole antes de <code>&lt;/body&gt;</code>:</p>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre>&lt;!-- Cotação de Moedas em Tempo Real --&gt;
+&lt;script src="https://SUA_API_URL/static/widget.js" async&gt;&lt;/script&gt;
+&lt;script&gt;
+  document.addEventListener('DOMContentLoaded', async function() {
+    const res = await fetch('https://SUA_API_URL/api/cotacoes');
+    const data = await res.json();
+    console.log('Cotações carregadas:', data.cotacoes);
+    // Exemplo: Salva as taxas no objeto global da loja
+    window.TaxasCambio = data.cotacoes;
+  });
+&lt;/script&gt;</pre>
+          </div>
+        </div>
+
+        <div class="doc-step">
+          <h4>2. Conversão Automática de Preço em Produtos</h4>
+          <p>Para exibir o preço convertido nos cards de produtos ou na página de produto:</p>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre>&lt;!-- Marque qualquer elemento com data-usd para conversão automática --&gt;
+&lt;span data-usd="{{ product.price | divided_by: 100.0 }}" class="preco-convertido"&gt;
+  Calculando...
+&lt;/span&gt;</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab WordPress -->
+      <div id="tab-wordpress" class="tab-content">
+        <div class="doc-step">
+          <h4>Opção A: Shortcode PHP para `functions.php` (WooCommerce ou Tema)</h4>
+          <p>Adicione ao final do <code>functions.php</code> do seu tema filho:</p>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre>// Shortcode [cotacao_dolar] no WordPress
+function cotacao_dolar_shortcode() {
+    $response = wp_remote_get('https://SUA_API_URL/api/cotacoes');
+    if (is_wp_error($response)) return 'Cotação indisponível';
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    $brl = $body['cotacoes']['BRL']['compra'];
+    $pyg = number_format($body['cotacoes']['PYG']['compra'], 0, ',', '.');
+    $ars = number_format($body['cotacoes']['ARS']['compra'], 2, ',', '.');
+    
+    return "&lt;div class='cotacao-box'&gt;
+        &lt;span&gt;🇺🇸 1 USD = R$ {$brl}&lt;/span&gt; | 
+        &lt;span&gt;₲ {$pyg}&lt;/span&gt; | 
+        &lt;span&gt;$ {$ars}&lt;/span&gt;
+    &lt;/div&gt;";
+}
+add_shortcode('cotacao_dolar', 'cotacao_dolar_shortcode');</pre>
+          </div>
+        </div>
+
+        <div class="doc-step">
+          <h4>Opção B: Via Elementor ou Bloco HTML</h4>
+          <p>Basta adicionar um bloco de código HTML em qualquer página ou rodapé com o script universal.</p>
+        </div>
+      </div>
+
+      <!-- Tab Widget -->
+      <div id="tab-widget" class="tab-content">
+        <div class="doc-step">
+          <h4>Barra de Cotações com 1 Linha de Código</h4>
+          <p>Coloque a tag abaixo em qualquer site para criar automaticamente uma barra de cotações com atualização a cada 30 segundos:</p>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre>&lt;div id="barra-cotacoes"&gt;&lt;/div&gt;
+&lt;script src="https://SUA_API_URL/static/widget.js" data-ticker="#barra-cotacoes" async&gt;&lt;/script&gt;</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Fetch -->
+      <div id="tab-fetch" class="tab-content">
+        <div class="doc-step">
+          <h4>Exemplo de requisição Fetch (CORS nativo)</h4>
+          <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copiar</button>
+<pre>// Converte 100 USD para BRL, PYG e ARS
+fetch('https://SUA_API_URL/api/converter?valor=100')
+  .then(res => res.json())
+  .then(data => {
+    console.log('Real:', data.conversoes.BRL.valor_formatado);       // R$ 513,62
+    console.log('Guarani:', data.conversoes.PYG.valor_formatado);   // ₲ 571.178
+    console.log('Peso Arg:', data.conversoes.ARS.valor_formatado);   // $ 151.525,00
+  });</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      API de Cotação em Tempo Real • Criada com FastAPI • Atualização a cada 30 segundos
+    </footer>
+  </div>
+
+  <script>
+    let cotacoesCache = null;
+
+    async function carregarCotacoes() {
+      try {
+        const res = await fetch('/api/cotacoes');
+        const data = await res.json();
+        cotacoesCache = data.cotacoes;
+
+        // Atualiza textos
+        document.getElementById('last-updated-text').textContent = 
+          `Última atualização: ${new Date().toLocaleTimeString()} (Fonte: ${data.fonte})`;
+
+        // Atualiza cartões
+        ['BRL', 'PYG', 'ARS'].forEach(code => {
+          const item = data.cotacoes[code];
+          if (!item) return;
+
+          const rateEl = document.getElementById(`rate-${code}`);
+          const varEl = document.getElementById(`var-${code}`);
+          const bidEl = document.getElementById(`bid-${code}`);
+          const askEl = document.getElementById(`ask-${code}`);
+          const highEl = document.getElementById(`high-${code}`);
+          const lowEl = document.getElementById(`low-${code}`);
+
+          if (code === 'PYG') {
+            rateEl.textContent = `${item.simbolo} ${Math.round(item.compra).toLocaleString('de-DE')}`;
+            bidEl.textContent = Math.round(item.compra).toLocaleString('de-DE');
+            askEl.textContent = Math.round(item.venda).toLocaleString('de-DE');
+            highEl.textContent = Math.round(item.maxima || item.compra).toLocaleString('de-DE');
+            lowEl.textContent = Math.round(item.minima || item.compra).toLocaleString('de-DE');
+          } else {
+            rateEl.textContent = `${item.simbolo} ${item.compra.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+            bidEl.textContent = item.compra.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+            askEl.textContent = item.venda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+            highEl.textContent = (item.maxima || item.compra).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+            lowEl.textContent = (item.minima || item.compra).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+          }
+
+          const pct = item.variacao_pct || 0;
+          varEl.textContent = `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}%`;
+          varEl.className = `variation-tag ${pct >= 0 ? 'var-positive' : 'var-negative'}`;
+        });
+
+        recalcularConversao();
+      } catch (err) {
+        console.error('Erro ao buscar cotações:', err);
+        document.getElementById('last-updated-text').textContent = 'Erro ao sincronizar cotações. Tentando novamente...';
+      }
+    }
+
+    function recalcularConversao() {
+      if (!cotacoesCache) return;
+      const valor = parseFloat(document.getElementById('amount-input').value) || 0;
+
+      const brlRate = cotacoesCache['BRL'].compra;
+      const pygRate = cotacoesCache['PYG'].compra;
+      const arsRate = cotacoesCache['ARS'].compra;
+
+      const convBRL = valor * brlRate;
+      const convPYG = valor * pygRate;
+      const convARS = valor * arsRate;
+
+      document.getElementById('conv-BRL').textContent = `R$ ${convBRL.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('conv-rate-BRL').textContent = `1 USD = R$ ${brlRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+
+      document.getElementById('conv-PYG').textContent = `₲ ${Math.round(convPYG).toLocaleString('de-DE')}`;
+      document.getElementById('conv-rate-PYG').textContent = `1 USD = ₲ ${Math.round(pygRate).toLocaleString('de-DE')}`;
+
+      document.getElementById('conv-ARS').textContent = `$ ${convARS.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('conv-rate-ARS').textContent = `1 USD = $ ${arsRate.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    document.getElementById('amount-input').addEventListener('input', recalcularConversao);
+
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function copyCode(btn) {
+      const code = btn.parentElement.querySelector('pre').innerText;
+      navigator.clipboard.writeText(code);
+      btn.textContent = 'Copiado!';
+      setTimeout(() => btn.textContent = 'Copiar', 2000);
+    }
+
+    // Carrega cotações e renova a cada 30 segundos
+    carregarCotacoes();
+    setInterval(carregarCotacoes, 30000);
+  </script>
+</body>
+</html>
