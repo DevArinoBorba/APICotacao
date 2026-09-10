@@ -1,0 +1,137 @@
+ate-zoom template-index " data-instant-intensity="viewport">
+    <a href="#main" class="visually-hidden skip-to-content">Pular </a>
+    <span class="loading-bar"></span>
+
+    <div id="shopify-section-currency-rates-bar" class="shopify-section"><div
+    id="currency-rates-section-currency-rates-bar"
+    class="currency-rates-bar"
+    style="
+      --cr-bg: #0b0b0e;
+      --cr-text: #ffffff;
+      --cr-accent: #e50914;
+      --cr-border: #1e1e26;
+      --cr-font-size: 13px;
+    "
+  >
+    <div class="currency-rates-container"><div class="currency-rates-badge">
+          <span class="currency-rates-dot"></span>
+          <span class="currency-rates-title">USD Ref.</span>
+        </div><div id="currency-rates-items-currency-rates-bar" class="currency-rates-items">
+        <div class="currency-rate-chip skeleton">
+          <span class="currency-rate-loading">Carregando cotações...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .currency-rates-bar {
+      background-color: var(--cr-bg, #0c0c10);
+      color: var(--cr-text, #ffffff);
+      border-bottom: 1px solid var(--cr-border, #22222a);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: var(--cr-font-size, 13px);
+      padding: 7px 16px;
+      line-height: 1.2;
+      position: relative;
+      z-index: 40;
+      width: 100%;
+    }
+
+    .currency-rates-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+    }
+
+    .currency-rates-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(229, 9, 20, 0.12);
+      border: 1px solid rgba(229, 9, 20, 0.35);
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--cr-accent, #e50914);
+      flex-shrink: 0;
+    }
+
+    .currency-rates-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--cr-accent, #e50914);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--cr-accent, #e50914);
+      animation: cr-pulse 2s infinite;
+    }
+
+    @keyframes cr-pulse {
+      0% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.15); }
+      100% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    .currency-rates-items {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 2px 0;
+    }
+    .currency-rates-items::-webkit-scrollbar {
+      display: none;
+    }
+
+    .currency-rate-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 4px 10px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .currency-rate-chip:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--cr-accent, #e50914);
+      transform: translateY(-1px);
+    }
+
+    .currency-rate-flag {
+      width: 18px;
+      height: 13px;
+      border-radius: 2px;
+      object-fit: cover;
+      display: block;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .currency-rate-symbol {
+      color: #9da0aa;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 1px;
+    }
+
+    .currency-rate-value {
+      color: #ffffff;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+
+    .currency-rate-loading {
+ 
