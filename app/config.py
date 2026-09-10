@@ -6,6 +6,7 @@ Configurações da API de Cotação de Moedas
 CACHE_TTL_SECONDS: int = 30
 
 # URLs das fontes de dados
+ATACADO_CONNECT_URL: str = "https://atacadoconnect.com/api/dados-globais"
 AWESOME_API_URL: str = "https://economia.awesomeapi.com.br/last/USD-BRL,USD-PYG,USD-ARS"
 FALLBACK_API_URL: str = "https://open.er-api.com/v6/latest/USD"
 

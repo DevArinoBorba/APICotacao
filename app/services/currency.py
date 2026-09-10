@@ -58,8 +58,67 @@ class CurrencyService:
             return False
         return (time.time() - self._cache_time) < CACHE_TTL_SECONDS
 
+    async def _fetch_from_atacado_connect(self) -> Tuple[Dict[str, CotacaoMoeda], str]:
+        """Busca as cotações comerciais praticadas pelo Atacado Connect (Ciudad del Este)."""
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json",
+        }
+        async with httpx.AsyncClient(timeout=6.0, headers=headers) as client:
+            from app.config import ATACADO_CONNECT_URL
+            response = await client.get(ATACADO_CONNECT_URL)
+            response.raise_for_status()
+            data = response.json()
+
+        cotacao_raw = data.get("cotacao", {})
+        if not cotacao_raw or "real" not in cotacao_raw:
+            raise ValueError("Resposta do Atacado Connect não contém os dados esperados de cotação")
+
+        taxa_real = float(cotacao_raw.get("real", 5.26))
+        taxa_guarani = float(cotacao_raw.get("guarani", 6100))
+        taxa_peso = float(cotacao_raw.get("peso", 1900))
+
+        now_str = datetime.now(timezone.utc).isoformat()
+        cotacoes: Dict[str, CotacaoMoeda] = {
+            "BRL": CotacaoMoeda(
+                codigo="BRL",
+                nome=SUPPORTED_CURRENCIES["BRL"]["nome"],
+                simbolo=SUPPORTED_CURRENCIES["BRL"]["simbolo"],
+                compra=taxa_real,
+                venda=taxa_real,
+                maxima=taxa_real,
+                minima=taxa_real,
+                variacao_pct=0.0,
+                data_hora=now_str,
+            ),
+            "PYG": CotacaoMoeda(
+                codigo="PYG",
+                nome=SUPPORTED_CURRENCIES["PYG"]["nome"],
+                simbolo=SUPPORTED_CURRENCIES["PYG"]["simbolo"],
+                compra=taxa_guarani,
+                venda=taxa_guarani,
+                maxima=taxa_guarani,
+                minima=taxa_guarani,
+                variacao_pct=0.0,
+                data_hora=now_str,
+            ),
+            "ARS": CotacaoMoeda(
+                codigo="ARS",
+                nome=SUPPORTED_CURRENCIES["ARS"]["nome"],
+                simbolo=SUPPORTED_CURRENCIES["ARS"]["simbolo"],
+                compra=taxa_peso,
+                venda=taxa_peso,
+                maxima=taxa_peso,
+                minima=taxa_peso,
+                variacao_pct=0.0,
+                data_hora=now_str,
+            ),
+        }
+
+        return cotacoes, "Atacado Connect (Câmbio Comercial CDE)"
+
     async def _fetch_from_awesome_api(self) -> Tuple[Dict[str, CotacaoMoeda], str]:
-        """Busca cotações em tempo real da AwesomeAPI."""
+        """Busca cotações em tempo real da AwesomeAPI com spread comercial aplicado."""
         async with httpx.AsyncClient(timeout=6.0) as client:
             response = await client.get(AWESOME_API_URL)
             response.raise_for_status()
@@ -75,15 +134,18 @@ class CurrencyService:
             "ARS": data.get("USDARS"),
         }
 
+        # Spread comercial de ~3.1% para aproximar do dólar de balcão de Ciudad del Este
+        spread_balcao = 1.031
+
         for moeda, cotacao in pares.items():
             if not cotacao:
                 continue
 
             cfg = SUPPORTED_CURRENCIES[moeda]
-            bid = float(cotacao["bid"])
-            ask = float(cotacao.get("ask", bid))
-            high = float(cotacao["high"]) if "high" in cotacao and cotacao["high"] else bid
-            low = float(cotacao["low"]) if "low" in cotacao and cotacao["low"] else bid
+            bid = round(float(cotacao["bid"]) * spread_balcao, 2 if moeda != "PYG" else 0)
+            ask = round(float(cotacao.get("ask", cotacao["bid"])) * spread_balcao, 2 if moeda != "PYG" else 0)
+            high = round(float(cotacao.get("high", bid)) * spread_balcao, 2 if moeda != "PYG" else 0)
+            low = round(float(cotacao.get("low", bid)) * spread_balcao, 2 if moeda != "PYG" else 0)
             pct_change = float(cotacao["pctChange"]) if "pctChange" in cotacao and cotacao["pctChange"] else 0.0
 
             cotacoes[moeda] = CotacaoMoeda(
@@ -101,7 +163,7 @@ class CurrencyService:
         if len(cotacoes) < 3:
             raise ValueError("AwesomeAPI não retornou todas as 3 moedas necessárias")
 
-        return cotacoes, "AwesomeAPI (Tempo Real)"
+        return cotacoes, "AwesomeAPI (Câmbio Comercial)"
 
     async def _fetch_from_fallback_api(self) -> Tuple[Dict[str, CotacaoMoeda], str]:
         """Busca cotações do serviço de fallback (ExchangeRate Open API)."""
@@ -113,10 +175,11 @@ class CurrencyService:
         rates = data.get("rates", {})
         cotacoes: Dict[str, CotacaoMoeda] = {}
         now_str = datetime.now(timezone.utc).isoformat()
+        spread_balcao = 1.031
 
         for moeda in ["BRL", "PYG", "ARS"]:
             if moeda in rates:
-                rate = float(rates[moeda])
+                rate = round(float(rates[moeda]) * spread_balcao, 2 if moeda != "PYG" else 0)
                 cfg = SUPPORTED_CURRENCIES[moeda]
                 cotacoes[moeda] = CotacaoMoeda(
                     codigo=moeda,
@@ -146,25 +209,29 @@ class CurrencyService:
                 cotacoes=self._cache_data,
             )
 
-        # Tentativa 1: AwesomeAPI (tempo real a cada 30s)
+        # Tentativa 1: Atacado Connect (Câmbio comercial real das lojas de Ciudad del Este)
         try:
-            cotacoes, fonte = await self._fetch_from_awesome_api()
+            cotacoes, fonte = await self._fetch_from_atacado_connect()
         except Exception as err:
-            logger.warning(f"Falha ao obter cotações da AwesomeAPI: {err}. Tentando fallback...")
+            logger.warning(f"Falha ao obter cotações do Atacado Connect: {err}. Tentando AwesomeAPI...")
             try:
-                cotacoes, fonte = await self._fetch_from_fallback_api()
-            except Exception as fallback_err:
-                logger.error(f"Falha também no fallback de cotações: {fallback_err}")
-                # Se tínhamos cache antigo, devolvemos como último recurso
-                if self._cache_data:
-                    return CotacoesResponse(
-                        sucesso=True,
-                        base="USD",
-                        data_atualizacao=self._cache_last_update,
-                        fonte=f"{self._cache_source} (Dados anteriores)",
-                        cotacoes=self._cache_data,
-                    )
-                raise RuntimeError(f"Não foi possível obter as cotações: {err} / {fallback_err}")
+                cotacoes, fonte = await self._fetch_from_awesome_api()
+            except Exception as awesome_err:
+                logger.warning(f"Falha na AwesomeAPI: {awesome_err}. Tentando fallback...")
+                try:
+                    cotacoes, fonte = await self._fetch_from_fallback_api()
+                except Exception as fallback_err:
+                    logger.error(f"Falha em todas as fontes de cotação: {fallback_err}")
+                    if self._cache_data:
+                        return CotacoesResponse(
+                            sucesso=True,
+                            base="USD",
+                            data_atualizacao=self._cache_last_update,
+                            fonte=f"{self._cache_source} (Dados anteriores)",
+                            cotacoes=self._cache_data,
+                        )
+                    raise RuntimeError(f"Não foi possível obter as cotações: {err} / {awesome_err} / {fallback_err}")
+
 
         # Atualiza o cache em memória
         now_iso = datetime.now(timezone.utc).isoformat()
