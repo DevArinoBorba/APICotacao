@@ -89,6 +89,42 @@ async def get_cotacoes(
 
 
 @app.get(
+    "/api/dados-globais",
+    tags=["Cotações"],
+    summary="Cotações no padrão simplificado (estilo Atacado Connect)",
+    description=(
+        "Endpoint no mesmo formato que o Atacado Connect usa em /api/dados-globais. "
+        "Retorna as taxas de conversão de 1 USD diretamente para Real, Guarani e Peso."
+    ),
+)
+async def get_dados_globais(
+    response: Response,
+    spread_pct: float = Query(0.0, description="Margem/spread percentual adicional opcional (ex: 2.5 para +2.5%)"),
+):
+    try:
+        dados = await currency_service.get_cotacoes()
+        response.headers["Cache-Control"] = "public, max-age=30"
+
+        fator = 1.0 + (spread_pct / 100.0)
+
+        taxa_real = round(dados.cotacoes["BRL"].compra * fator, 2)
+        taxa_guarani = int(round(dados.cotacoes["PYG"].compra * fator))
+        taxa_peso = round(dados.cotacoes["ARS"].compra * fator, 2)
+
+        return {
+            "cotacao": {
+                "real": taxa_real,
+                "guarani": taxa_guarani,
+                "peso": taxa_peso,
+            },
+            "fonte": dados.fonte,
+            "data_atualizacao": dados.data_atualizacao,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Erro ao gerar dados globais: {str(e)}")
+
+
+@app.get(
     "/api/converter",
     response_model=None,
     tags=["Conversão"],

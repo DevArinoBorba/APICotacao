@@ -75,6 +75,18 @@ def test_get_cotacoes():
     assert cotacoes["ARS"]["simbolo"] == "$"
 
 
+def test_get_dados_globais():
+    """Testa o endpoint simplificado compatível com o Atacado Connect."""
+    response = client.get("/api/dados-globais")
+    assert response.status_code == 200
+    data = response.json()
+    assert "cotacao" in data
+    cotacao = data["cotacao"]
+    assert "real" in cotacao and cotacao["real"] > 0
+    assert "guarani" in cotacao and cotacao["guarani"] > 0
+    assert "peso" in cotacao and cotacao["peso"] > 0
+
+
 def test_conversao_multipla():
     """Testa conversão automática de 100 USD para BRL, PYG e ARS."""
     response = client.get("/api/converter?valor=100")

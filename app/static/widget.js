@@ -46,6 +46,21 @@
     },
 
     /**
+     * Retorna dados no formato simplificado igual ao Atacado Connect (/api/dados-globais)
+     * Ex: { cotacao: { real: 5.14, guarani: 5712, peso: 1515 } }
+     */
+    async obterDadosGlobais(spreadPct = 0.0) {
+      try {
+        const res = await fetch(`${this.apiBase}/api/dados-globais?spread_pct=${spreadPct}`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+      } catch (err) {
+        console.error('[CotacaoMoedas] Erro ao carregar dados globais:', err);
+        return null;
+      }
+    },
+
+    /**
      * Converte um valor numérico
      */
     async converter(valor, de = 'USD', para = 'BRL') {
