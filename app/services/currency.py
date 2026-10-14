@@ -58,6 +58,81 @@ class CurrencyService:
             return False
         return (time.time() - self._cache_time) < CACHE_TTL_SECONDS
 
+    async def _fetch_from_mega_eletronicos(self) -> Tuple[Dict[str, CotacaoMoeda], str]:
+        """Busca as cotações comerciais praticadas pela Mega Eletrônicos (Ciudad del Este)."""
+        import re
+        from app.config import MEGA_ELETRONICOS_URL
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+        async with httpx.AsyncClient(timeout=7.0, headers=headers, follow_redirects=True) as client:
+            response = await client.get(MEGA_ELETRONICOS_URL)
+            response.raise_for_status()
+            html = response.text
+
+        pattern = r'<img[^>]*class="exchange-micro-flag"[^>]*alt="([^"]+)"[^>]*>.*?<span[^>]*class="exchange-micro-value">([^<]+)</span>'
+        matches = re.findall(pattern, html, re.DOTALL)
+
+        raw_rates = {}
+        for alt, val in matches:
+            raw_rates[alt.strip().lower()] = val.strip()
+
+        taxa_real = None
+        taxa_guarani = None
+        taxa_peso = None
+
+        for k, v in raw_rates.items():
+            if "real" in k:
+                taxa_real = float(v.replace(",", "."))
+            elif "guaran" in k:
+                taxa_guarani = float(v.replace(",", "").replace(".", ""))
+            elif "peso" in k:
+                taxa_peso = float(v.replace(",", "").replace(".", ""))
+
+        if taxa_real is None or taxa_guarani is None or taxa_peso is None:
+            raise ValueError(f"Não foi possível extrair todas as cotações do Mega Eletrônicos: {raw_rates}")
+
+        now_str = datetime.now(timezone.utc).isoformat()
+        cotacoes: Dict[str, CotacaoMoeda] = {
+            "BRL": CotacaoMoeda(
+                codigo="BRL",
+                nome=SUPPORTED_CURRENCIES["BRL"]["nome"],
+                simbolo=SUPPORTED_CURRENCIES["BRL"]["simbolo"],
+                compra=taxa_real,
+                venda=taxa_real,
+                maxima=taxa_real,
+                minima=taxa_real,
+                variacao_pct=0.0,
+                data_hora=now_str,
+            ),
+            "PYG": CotacaoMoeda(
+                codigo="PYG",
+                nome=SUPPORTED_CURRENCIES["PYG"]["nome"],
+                simbolo=SUPPORTED_CURRENCIES["PYG"]["simbolo"],
+                compra=taxa_guarani,
+                venda=taxa_guarani,
+                maxima=taxa_guarani,
+                minima=taxa_guarani,
+                variacao_pct=0.0,
+                data_hora=now_str,
+            ),
+            "ARS": CotacaoMoeda(
+                codigo="ARS",
+                nome=SUPPORTED_CURRENCIES["ARS"]["nome"],
+                simbolo=SUPPORTED_CURRENCIES["ARS"]["simbolo"],
+                compra=taxa_peso,
+                venda=taxa_peso,
+                maxima=taxa_peso,
+                minima=taxa_peso,
+                variacao_pct=0.0,
+                data_hora=now_str,
+            ),
+        }
+
+        return cotacoes, "Mega Eletrônicos (Câmbio Comercial CDE)"
+
     async def _fetch_from_atacado_connect(self) -> Tuple[Dict[str, CotacaoMoeda], str]:
         """Busca as cotações comerciais praticadas pelo Atacado Connect (Ciudad del Este)."""
         headers = {
@@ -209,11 +284,15 @@ class CurrencyService:
                 cotacoes=self._cache_data,
             )
 
-        # Tentativa 1: Atacado Connect (Câmbio comercial real das lojas de Ciudad del Este)
+        # Tentativa 1: Mega Eletrônicos (Câmbio comercial de referência em CDE)
         try:
-            cotacoes, fonte = await self._fetch_from_atacado_connect()
-        except Exception as err:
-            logger.warning(f"Falha ao obter cotações do Atacado Connect: {err}. Tentando AwesomeAPI...")
+            cotacoes, fonte = await self._fetch_from_mega_eletronicos()
+        except Exception as mega_err:
+            logger.warning(f"Falha ao obter cotações do Mega Eletrônicos: {mega_err}. Tentando Atacado Connect...")
+            try:
+                cotacoes, fonte = await self._fetch_from_atacado_connect()
+            except Exception as err:
+                logger.warning(f"Falha ao obter cotações do Atacado Connect: {err}. Tentando AwesomeAPI...")
             try:
                 cotacoes, fonte = await self._fetch_from_awesome_api()
             except Exception as awesome_err:
